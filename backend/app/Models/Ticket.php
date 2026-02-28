@@ -3,16 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo; // <--- Nuevo
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 
 class Ticket extends Model
 {
     use HasFactory;
 
-    /**
-     * Atributos asignables. [cite: 28]
-     */
     protected $fillable = [
         'title',
         'description',
@@ -20,11 +18,14 @@ class Ticket extends Model
         'user_id'
     ];
 
-    /**
-     * REQUISITO: Un ticket pertenece a un usuario (Customer). [cite: 17, 19]
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function scopeByStatus(Builder $query, $status): Builder
+    {
+        if (!$status) return $query;
+        return $query->where('status', $status);
     }
 }

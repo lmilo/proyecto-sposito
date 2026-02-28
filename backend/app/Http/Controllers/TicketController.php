@@ -6,7 +6,9 @@ use App\Models\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests; // IMPORTANTE para usar policies
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Models\Comment;
+use App\Jobs\NotifyNewComment;
 
 class TicketController extends Controller
 {
@@ -58,7 +60,7 @@ class TicketController extends Controller
             'user_id' => Auth::id(),
         ]);
 
-        return response()->json($ticket, 21);
+        return response()->json($ticket, 201);
     }
 
     public function show($id)
@@ -90,5 +92,28 @@ class TicketController extends Controller
             'message' => 'Estado actualizado',
             'ticket' => $ticket
         ]);
+    }
+    public function addComment(Request $request, $id)
+    {
+        $ticket = Ticket::findOrFail($id);
+
+        $this->authorize('view', $ticket);
+
+        $validated = $request->validate([
+            'message' => 'required|string|min:3'
+        ]);
+
+        $comment = Comment::create([
+            'ticket_id' => $ticket->id,
+            'user_id' => Auth::id(),
+            'message' => $validated['message']
+        ]);
+
+        NotifyNewComment::dispatch($comment);
+
+        return response()->json([
+            'message' => 'Comentario añadido y notificación en cola',
+            'comment' => $comment
+        ], 201);
     }
 }

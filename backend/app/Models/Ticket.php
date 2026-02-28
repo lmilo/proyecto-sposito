@@ -28,4 +28,8 @@ class Ticket extends Model
         if (!$status) return $query;
         return $query->where('status', $status);
     }
+    public function comments()
+    {
+        return $this->hasMany(Comment::class);
+    }
 }

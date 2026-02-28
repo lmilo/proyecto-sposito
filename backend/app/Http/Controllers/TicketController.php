@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ticket;
+use App\Models\Comment;
+use App\Jobs\NotifyNewComment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use App\Models\Comment;
-use App\Jobs\NotifyNewComment;
 
 class TicketController extends Controller
 {
@@ -30,7 +30,6 @@ class TicketController extends Controller
                 $query->where('user_id', $user->id);
             }
 
-            // Usamos el scope que pusimos en el modelo para que sea más limpio
             if ($status) {
                 $query->where('status', $status);
             }
@@ -63,9 +62,18 @@ class TicketController extends Controller
         return response()->json($ticket, 201);
     }
 
+    /**
+     * MODIFICADO: Ahora carga comentarios y usuarios para el Front
+     */
     public function show($id)
     {
-        $ticket = Ticket::findOrFail($id);
+        // Eager loading: traemos el ticket con sus comentarios y el autor de cada comentario
+        $ticket = Ticket::with(['user', 'comments.user'])->find($id);
+
+        if (!$ticket) {
+            return response()->json(['message' => 'Ticket no encontrado'], 404);
+        }
+
         $this->authorize('view', $ticket); // Usamos la Policy
 
         return response()->json($ticket);
@@ -76,7 +84,6 @@ class TicketController extends Controller
     {
         $ticket = Ticket::findOrFail($id);
 
-        // Esto llama al método updateStatus de tu TicketPolicy
         $this->authorize('updateStatus', $ticket);
 
         $validated = $request->validate([
@@ -86,7 +93,7 @@ class TicketController extends Controller
         $ticket->update(['status' => $validated['status']]);
 
         // REQUISITO: Limpiar cache para que el cambio se vea reflejado
-        Cache::flush(); // Forma rápida, o puedes borrar la key específica
+        Cache::flush();
 
         return response()->json([
             'message' => 'Estado actualizado',
@@ -109,11 +116,12 @@ class TicketController extends Controller
             'message' => $validated['message']
         ]);
 
+        // REQUISITO: Cola de Redis
         NotifyNewComment::dispatch($comment);
 
         return response()->json([
             'message' => 'Comentario añadido y notificación en cola',
-            'comment' => $comment
+            'comment' => $comment->load('user')
         ], 201);
     }
 }

@@ -13,20 +13,27 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Agente de soporte obligatorio
-        User::create([
-            'name'     => 'Support Agent',
-            'email'    => 'agent@test.com',
-            'password' => Hash::make('password'),
-            'role'     => 'agent',
+        \App\Models\User::create([
+            'name' => 'Support Agent',
+            'email' => 'agent@test.com',
+            'password' => bcrypt('password'),
+            'role' => 'agent', // [cite: 19]
         ]);
 
-        // 2. Cliente de prueba obligatorio
-        User::create([
-            'name'     => 'Test Customer',
-            'email'    => 'customer@test.com',
-            'password' => Hash::make('password'),
-            'role'     => 'customer',
+        $customer = \App\Models\User::create([
+            'name' => 'Test Customer',
+            'email' => 'customer@test.com',
+            'password' => bcrypt('password'),
+            'role' => 'customer', // [cite: 19]
         ]);
+
+        for ($i = 1; $i <= 3; $i++) {
+            \App\Models\Ticket::create([
+                'title' => "Ticket de prueba $i",
+                'description' => "Este es el problema reportado número $i",
+                'status' => 'open',
+                'user_id' => $customer->id,
+            ]);
+        }
     }
 }
